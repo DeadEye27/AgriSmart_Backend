@@ -1,5 +1,7 @@
 const db = require('../config/database');
 const bcrypt = require('bcrypt');
+const { json } = require('express');
+const jwt = require('jsonwebtoken');
 
 const register = async (req, res) => {
     try {
@@ -53,4 +55,67 @@ const register = async (req, res) => {
     }
 };
 
-module.exports = { register };
+const login = async (req, res) => {
+    try {
+        const { email, password } = req.body;
+
+        // Validasi input
+        if (!email || !password) {
+            return res.status(400).json({
+                success: false,
+                message: "Email dan Password wajib diisi!"
+            });
+        }
+
+        // cari user berdasarkan email di database
+        const [users] = await db.query('SELECT * FROM users WHERE email = ?', [email]);
+
+        if (users.length === 0) {
+            return res.status(401).json({
+                success: false,
+                message: "Email belum terdaftar."
+            });
+        }
+
+        const user = users[0]; // ambil data user dari array
+
+        // bandingkan password yang dikirm dengan hash password di database
+        const validPassword = await bcrypt.compare(password, user.password);
+
+        if (!validPassword){
+            return res.status(401).json({
+                success: false,
+                message: "Password Salah!"
+            });
+        }
+
+        // jika benar, token JWT akan dibuat
+        // yang disimpan adalah id dan email user, akan kadaluarsa dalam 1 hari
+        const token = jwt.sign(
+            { id: user.id, email: user.email },
+            process.env.JWT_SECRET,
+            { expiresIn: '1d' }
+        );
+
+        // mengirim respon sukses beserta tokennya
+        res.status(200).json({
+            success: true,
+            message: "Login Berhasil!",
+            token: token,
+            data: {
+                id: user.id,
+                name: user.name,
+                email: user.email
+            }
+        });
+
+    } catch (error) {
+        console.error('[LOGIN ERROR]', error);
+        res.status(500).json({
+            success:  false,
+            message: "Terjadi kesalahan pada server beckend"
+        });
+    }
+};
+
+module.exports = { register, login };
