@@ -66,4 +66,80 @@ const getPlants = async (req, res) => {
     }
 };
 
-module.exports = { addPlant, getPlants };
+// Fitur 3 : Mengubah Data Tanaman (Update)
+const updatePlant = async (req, res) => {
+    try {
+        const plantId = req.params.id; // mengambil ID tanaman dari URL contoh : /api/plants/1
+        const userId = req.user.id; // ID user dari token JWT
+        const { name, species, watering_frequency } = req.body;
+
+        // 1. Cek apakah tanaman tersebut ada dan BENAR milik user yang sedang login
+        const [existingPlant] = await db.query('SELECT * FROM plants WHERE id = ? AND user_id = ?', [plantId, userId]);
+
+        if (existingPlant.length === 0) {
+            return res.status(404).json({
+                success: false,
+                message: "Tanaman tidak ditemukan atau anda tidak memiliki akses untuk mengubahnya."
+            });
+        }
+
+        // 2. Do the Update
+        // jika ada field yang tidak dikirm dari Frontend, kita gunakan data lama (existingPlant)
+        await db.query(
+            'UPDATE plants SET name = ?, species = ?, watering_frequency = ? WHERE id = ?',
+            [
+                name || existingPlant[0].name,
+                species || existingPlant[0].species,
+                watering_frequency || existingPlant[0].watering_frequency,
+                plantId
+            ]
+        );
+
+        res.status(200).json({
+            success: true,
+            message: "Data tanaman diperbarui"
+        });
+
+    } catch (error) {
+        console.error('[UPDATE PLANT ERROR]', error);
+        res.status(500).json({
+            success: false,
+            message: "Terjadi kesalahan pada server"
+        });      
+    }
+};
+
+// Fitur 4 : Menghapus Tanaman (Delete)
+const deletePlant = async (req, res) => {
+    try {
+        const plantId = req.params.id;
+        const userId = req.user.id;
+
+        // 1. pastikan tanaman ada dan milik si user
+        const [existingPlant] = await db.query('SELECT * FROM plants WHERE id = ? AND user_id = ?', [plantId, userId]);
+
+        if (existingPlant.length === 0) {
+            return res.status(404).json({
+                success: false,
+                message: "Tanaman tidak ditemukan atau Anda tidak memiliki akses untuk menghapusnya"
+            });
+        }
+        
+        // 2. hapus dari database
+        await db.query('DELETE FROM plants WHERE id = ?', [plantId]);
+
+        res.status(200).json({
+            success: true,
+            message: "Tanaman Berhasil dihapus!"
+        });
+
+    } catch (error) {
+        console.error('[DELETE PLANT ERROR]', error);
+        res.status(500).json({
+            success: false,
+            message: "Terjadi kesalahan pada server"
+        });
+    }
+};
+
+module.exports = { addPlant, getPlants, updatePlant, deletePlant };
