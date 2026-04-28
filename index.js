@@ -8,11 +8,13 @@ const port = process.env.PORT || 3000;
 const db = require('./config/database');
 const authRoutes = require('./routes/authRoutes');
 const plantRoutes = require('./routes/plantRoutes');
+const scheduleRoutes = require('./routes/scheduleRoutes');
 
 app.use(cors());
 app.use(express.json());
 app.use('/api/auth', authRoutes);
 app.use('/api/plants', plantRoutes);
+app.use('/api/schedules', scheduleRoutes);
 
 app.get('/', (req, res) => {
     res.json({
