@@ -82,4 +82,90 @@ const getSchedules = async (req, res) => {
     }
 };
 
-module.exports = { addSchedule, getSchedules };
+// Fitur 3 : Mengubah Status / Tanggal Jadwal (Update)
+const updateSchedule = async (req, res) => {
+    try {
+        const scheduleId = req.params.id;
+        const userId = req.user.id;
+        const { watering_date, status } = req.body;
+
+        // 1. Cek keamanan: Pastikan jadwal ada, dan tanaman yang terhubung adalah milik user yang login
+        const checkQuery = `
+            SELECT s.id, s.watering_date, s.status 
+            FROM schedules s
+            JOIN plants p ON s.plant_id = p.id
+            WHERE s.id = ? AND p.user_id = ?
+        `;
+        const [existingSchedule] = await db.query(checkQuery, [scheduleId, userId]);
+
+        if (existingSchedule.length === 0) {
+            return res.status(404).json({
+                success: false,
+                message: "Jadwal tidak ditemukan atau kamu tidak memiliki akses."
+            });
+        }
+
+        // 2. Lakukan Update (bisa update tanggal, atau update status jadi 'completed')
+        await db.query(
+            'UPDATE schedules SET watering_date = ?, status = ? WHERE id = ?',
+            [
+                watering_date || existingSchedule[0].watering_date, 
+                status || existingSchedule[0].status,
+                scheduleId
+            ]
+        );
+
+        res.status(200).json({
+            success: true,
+            message: "Jadwal berhasil diperbarui!"
+        });
+
+    } catch (error) {
+        console.error('[UPDATE SCHEDULE ERROR]', error);
+        res.status(500).json({
+            success: false,
+            message: "Terjadi kesalahan pada server backend."
+        });
+    }
+};
+
+// Fitur 4 : Menghapus Jadwal (Delete)
+const deleteSchedule = async (req, res) => {
+    try {
+        const scheduleId = req.params.id;
+        const userId = req.user.id;
+
+        // 1. cek keamanan kepemilikan kek di fitur update
+        const checkQuery = `
+            SELECT s.id 
+            FROM schedules s
+            JOIN plants p ON s.plant_id = p.id
+            WHERE s.id = ? AND p.user_id = ?
+        `;
+        const [existingSchedule] = await db.query(checkQuery, [scheduleId, userId]);
+
+        if (existingSchedule.length === 0) {
+            return res.status(404).json({
+                success: false, 
+                message: "Jadwal tidak ditemukan atau kamu tidak memiliki akses."
+            });
+        }
+        
+        // 2. Eksekusi hapus data
+        await db.query('DELETE FROM schedules WHERE id = ?', [scheduleId]);
+
+        res.status(200).json({
+            success: true,
+            message: "Jadwal Berhasil Dihapus!"
+        });
+
+    } catch (error) {
+        console.error('[[DELETE SCHEDULE ERROR]]', error);
+        res.status(500).json({
+            success: false,
+            message: "Terjadi kesalahan pada server backend."
+        });
+    }
+};
+
+module.exports = { addSchedule, getSchedules, updateSchedule, deleteSchedule };
