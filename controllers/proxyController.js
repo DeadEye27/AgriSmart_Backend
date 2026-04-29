@@ -85,5 +85,43 @@ const searchPlants = async (req, res) => {
     }
 };
 
+// Fitur 3 : Mengambil Data Konversi Uang (ExchangeRate-API)
+const getExchangeRate = async (req, res) => {
+    try {
+        // URL tujuan ke  ExchangeRate-API (Base Default : USD)
+        // pastikan URL ini sesuai dengan dokumnetasi versi api yang digunakan
+        const url = `https://v6.exchangerate-api.com/v6/${process.env.EXCHANGERATE_API_KEY}/latest/USD`;
 
-module.exports = { getWeather, searchPlants };
+        // Tembak API Eksternal
+        const response = await axios.get(url);
+
+        // mengambil rate IDR saja agar response ke frontend lebih ringan dan spesifik
+        const idrRate = response.data.conversion_rates.IDR;
+
+        res.status(200).json({
+            success: true,
+            message: "Berhasil mengambil kurs tukas USD ke IDR",
+            data: {
+                base_currency: "USD",
+                target_currency: "IDR",
+                rate: idrRate
+            }
+        });
+
+    } catch (error) {
+        console.error('[EXCHANGE RATE API ERROR]', error.message);
+        
+        if (error.response) {
+            return res.status(error.response.status).json({
+                success: false,
+                message: "Gagal Mengambil Data dari Penyedia Kurs"
+            });
+        }
+        res.status(500).json({
+            success: false,
+            message: "Terjadi kesalahan pada server backend."
+        });
+    }
+};
+
+module.exports = { getWeather, searchPlants, getExchangeRate };
