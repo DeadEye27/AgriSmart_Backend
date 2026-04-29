@@ -44,4 +44,46 @@ const getWeather = async (req, res) => {
     }
 };
 
-module.exports = { getWeather };
+// Fitur 2 : Mengambil Data Katalog Tanaman (Perenual API)
+const searchPlants = async (req, res) => {
+    try {
+        // Frontend akan mengirim kata kunci pencarian, misalnya ?q=tomato
+        const searchQuery = req.query.q;
+
+        if (!searchQuery) {
+            return res.status(400).json({
+                success: false,
+                message: "Parameter kata kunci pencarian (q) wajib dikirim!"
+            });
+        }
+
+        // URL tujuan ke Perenual API
+        const url = `https://perenual.com/api/v2/species-list?key=${process.env.PERENUAL_API_KEY}&q=${searchQuery}`;
+
+        // tembak API eksternal
+        const response = await axios.get(url);
+
+        res.status(200).json({
+            success: true,
+            message: "Berhasil mengambil data katalog tanaman",
+            data: response.data
+        });
+
+    } catch (error) {
+        console.error('[PERENUAL API ERROR]', error.message);
+
+        if (error.response) {
+            return res.status(error.response.status).json({
+                success: false,
+                message: "Gagal Mengambil data dari ensiklopedia tanaman."
+            });
+        }
+        res.status(500).json({
+            success: false,
+            message: "Terjadi kesalahan pada server backend."
+        });
+    }
+};
+
+
+module.exports = { getWeather, searchPlants };
