@@ -124,4 +124,125 @@ const getExchangeRate = async (req, res) => {
     }
 };
 
-module.exports = { getWeather, searchPlants, getExchangeRate };
+// Fitur 4 : Mengambil Jawaban dari AI (Gemini API)
+const askGemini = async (req, res) => {
+    try {
+        // Karena pertanyaan bisa panjang, kita gunakan method POST
+        // dan mengambil data dari req.body, bukan req.query
+        const { question } = req.body;
+
+        if (!question) {
+            return res.status(400).json({
+                success: false,
+                message: "Pertanyaan (question) wajib dikirm!"
+            });
+        }
+
+        // Kita gunakan model gemini-1.5-flash (cepat dan cocok untuk asisten chat)
+        const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${process.env.GEMINI_API_KEY}`;
+
+        // Format payload sesuai standar dokumentasi Gemini API
+        const payload = {
+            contents: [{
+                parts: [{ text: `Kamu adalah asisten urban farming bernama AgriSmart. Jawab pertanyaan in dengan ramah: ${question}` }]
+            }]
+        };
+
+        // Tombak API Gemini
+        const response = await axios.post(url, payload);
+
+        // Mengekstrak jawaban teks dari struktur JSON balasan Gemini yang cukup berlapis
+        const aiAnswer = response.data.candidates[0].content.parts[0].text;
+
+        res.status(200).json({
+            success: true,
+            message: "Berhasil mendapatkan jawaban AI",
+            data: {
+                question: question,
+                answer: aiAnswer
+            }
+        });
+
+    } catch (error) {
+        // Log error yang lebih detail khusus untuk Gemini
+        console.error('[GEMINI API ERROR]', error.response?.data || error.message);
+
+        // Tangkap spesifik error 503 (High Demand)
+        if (error.response && error.response.status === 503) {
+            return res.status(503).json({
+                success: false,
+                message: "Asisten AgriSmart sedang melayani banyak pengguna. Mohon tunggu sebentar dan mohon coba lagi ya!"
+            });
+        }
+
+        if (error.response) {
+            return res.status(error.response.status).json({
+                success: false,
+                message: "Gagal memproses pertanyaan ke AI Gemini"
+            });
+        }
+
+        res.status(500).json({
+            success: false,
+            message: "Terjadi kesalahan pada server backend."
+        });
+    }
+};
+
+// Backup Fitur 4 : Menggunakan AI Alternatif (Groq API - Model Llama 3)
+const askGroq = async (req, res) => {
+    try {
+        const { question } = req.body;
+
+        if (!question) {
+            return res.status(400).json({
+                success: false,
+                message: "Pertanyaan (question) wajib dikirm!"
+            });
+        }
+
+        const url = 'https://api.groq.com/openai/v1/chat/completions';
+
+        // Payload standar OpenAI/Groq
+        const payload = {
+            model: "llama-3.1-8b-instant",
+            messages: [
+                {
+                    role: "system",
+                    content: "Kamu adalah asisten urban farmingbernama AgriSmart. Jawab pertanyaan ini dengan ramah ringkas dalam bahasa Indonesia"
+                },
+                {
+                    role: "user",
+                    content: question
+                }
+            ]
+        };
+
+        const   response = await axios.post(url, payload, {
+            headers: {
+                'Authorization': `Bearer ${process.env.GROQ_API_KEY}`,
+                'Content-Type': 'application/json'
+            }
+        });
+
+        const aiAnswer = response.data.choices[0].message.content;
+
+        res.status(200).json({
+            success: true,
+            message: "berhasil mendapatkan jawaban AI (Via Groq)",
+            data: {
+                question: question,
+                answer: aiAnswer
+            }
+        });
+
+    } catch (error) {
+        console.error('[GROQ API ERROR]', error.response?.data || error.message);
+        res.status(500).json({
+            success: false,
+            message: "Terjadi kesalahan pada server AI cadangan."
+        });      
+    }
+};
+
+module.exports = { getWeather, searchPlants, getExchangeRate, askGemini, askGroq };
