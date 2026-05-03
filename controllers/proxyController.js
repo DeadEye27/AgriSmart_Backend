@@ -88,23 +88,45 @@ const searchPlants = async (req, res) => {
 // Fitur 3 : Mengambil Data Konversi Uang (ExchangeRate-API)
 const getExchangeRate = async (req, res) => {
     try {
+        // Menangkap parameter dari URL (?base=USD&target=IDR)
+        // Menggunakan toUpperCase() agar formatnya selalu huruf besar sesuai standar API
+        const baseCurrency = (req.query.base || 'USD').toUpperCase();
+        const targetCurrency = (req.query.target || 'IDR').toUpperCase();
+        
+        // Menangkap jumlah/nominal yang ingin dikonversi
+        // jika user tidak mengirimkan ampunt, kita set default ke 1
+        const amount = parseFloat(req.query.amount) || 1;
+
         // URL tujuan ke  ExchangeRate-API (Base Default : USD)
         // pastikan URL ini sesuai dengan dokumnetasi versi api yang digunakan
-        const url = `https://v6.exchangerate-api.com/v6/${process.env.EXCHANGERATE_API_KEY}/latest/USD`;
+        const url = `https://v6.exchangerate-api.com/v6/${process.env.EXCHANGERATE_API_KEY}/latest/${baseCurrency}`;
 
         // Tembak API Eksternal
         const response = await axios.get(url);
 
-        // mengambil rate IDR saja agar response ke frontend lebih ringan dan spesifik
-        const idrRate = response.data.conversion_rates.IDR;
+        // mengambil rate berdasarkan targetCurrency yang direquest
+        const exchangeRate = response.data.conversion_rates[targetCurrency];
+
+        // Validasi jika mata uang target tidak ditemukan di database exchangeRate API
+        if (!exchangeRate) {
+            return res.status(404).json({
+                success: false,
+                message: `Mata uang tujuan (${targetCurrency} tidak didukung atau tidak ditemukan)`
+            });
+        }
+
+        // Perkalian Amount atau nilai yang dimasukan oleh user dengan exchangerate
+        const convertedAmount = amount * exchangeRate;
 
         res.status(200).json({
             success: true,
-            message: "Berhasil mengambil kurs tukas USD ke IDR",
+            message: `Berhasil mengkonversi ${amount} ${baseCurrency} ke ${targetCurrency}`,
             data: {
-                base_currency: "USD",
-                target_currency: "IDR",
-                rate: idrRate
+                base_currency: baseCurrency,
+                target_currency: targetCurrency,
+                exchange_rate: exchangeRate,
+                original_amount: amount,
+                converted_amount: parseFloat(convertedAmount)
             }
         });
 
@@ -114,7 +136,7 @@ const getExchangeRate = async (req, res) => {
         if (error.response) {
             return res.status(error.response.status).json({
                 success: false,
-                message: "Gagal Mengambil Data dari Penyedia Kurs"
+                message: "Gagal Mengambil Data dari Penyedia Kurs."
             });
         }
         res.status(500).json({
