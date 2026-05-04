@@ -17,6 +17,7 @@ app.use('/api/auth', authRoutes);
 app.use('/api/plants', plantRoutes);
 app.use('/api/schedules', scheduleRoutes);
 app.use('/api/proxy', proxyRoutes);
+app.use('/uploads', express.static('uploads'));
 
 app.get('/', (req, res) => {
     res.json({

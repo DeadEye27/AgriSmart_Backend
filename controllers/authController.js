@@ -2,6 +2,58 @@ const db = require('../config/database');
 const bcrypt = require('bcrypt');
 const { json } = require('express');
 const jwt = require('jsonwebtoken');
+const path = require('path');
+const multer = require('multer');
+
+const storage = multer.diskStorage({
+    destination: (req, file, cb) => {
+        cb(null, 'uploads/');
+    }, 
+    filename: (req, file, cb) => {
+        cb(null, req.user.id + '-' + Date.now() + path.extname(file.originalname));
+    }
+});
+
+const upload = multer({ storage: storage }).single('photo'); //photo adalah key yang dikirimkan dari frontend
+
+const uploadPhoto = async (req, res) => {
+    upload(req, res, async (err) => {
+        if (err) {
+            return  res.status(500).json({
+                success: false,
+                message: "Gagal Upload File"
+            });
+        }
+
+        if (!req.file) {
+            return res.status(400).json({
+                success: false,
+                message: "Mohon pilih file foto"
+            });
+        }
+
+        try {
+            const userId = req.user.id;
+            const fileName = req.file.filename
+            
+            // Update kolom profile+picture di database
+            await db.query('UPDATE users SET profile_picture = ? WHERE id = ?', [fileName, userId]);
+
+            res.status(200).json({
+                success: true,
+                message: "Foto Profile Berhasil Diperbarui",
+                fileName: fileName
+            });
+            
+        } catch (error) {
+            console.error(error);
+            res.status(500).json({
+                success: false,
+                message: "Terjadi kesalahan pada server backend"
+            });
+        }
+    });
+};
 
 const register = async (req, res) => {
     try {
@@ -118,4 +170,4 @@ const login = async (req, res) => {
     }
 };
 
-module.exports = { register, login };
+module.exports = { register, login, uploadPhoto };
