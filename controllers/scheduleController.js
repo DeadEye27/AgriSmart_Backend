@@ -4,13 +4,15 @@ const db = require('../config/database');
 const addSchedule = async (req, res) => {
     try {
         const { plant_id, watering_date } = req.body;
+        console.log('[SCHEDULE] Menerima waktu penyiraman', watering_date);
+        
         const userId = req.user.id // dari token JWT
 
         // Validasi input dasar
         if (!plant_id || !watering_date) {
             return res.status(400).json({
                 success: false,
-                message: "plant_id dan watering_date (YYYY-MM-DD) wajib diisi!"
+                message: "plant_id dan watering_date (YYYY-MM-DD HH:mm:ss) wajib diisi!"
             });
         }
 
