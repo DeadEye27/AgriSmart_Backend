@@ -1,4 +1,7 @@
 node_modules/
 .env
 api.rest
-uploads/
+
+uploads/*
+
+!.gitkeep
