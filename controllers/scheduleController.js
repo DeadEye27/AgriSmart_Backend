@@ -60,7 +60,12 @@ const getSchedules = async (req, res) => {
         // Menggunakan teknik JOIN SQL agar tidak hanya mendapat ID Tanaman,
         // tapi juga mendapatkan Nama Tanamannya sekaligus untuk memudahkan Frontend.
         const query = `
-            SELECT s.id, s.plant_id, p.name AS plant_name, s.watering_date, s.status
+            SELECT 
+              s.id, 
+              s.plant_id, 
+              p.name AS plant_name, 
+              DATE_FORMAT(s.watering_date, '%Y-%m-%d %H:%i:%s') AS watering_date,
+              s.status
             FROM schedules s
             JOIN plants p ON s.plant_id = p.id
             WHERE p.user_id = ?
