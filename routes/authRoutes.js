@@ -1,6 +1,6 @@
 const express = require('express');
 const router = express.Router();
-const { register, login, uploadPhoto } = require('../controllers/authController');
+const { register, login, uploadPhoto, upload } = require('../controllers/authController');
 const verifyToken = require('../middlewares/authMiddleware');
 const { verify } = require('jsonwebtoken');
 const db = require('../config/database');
@@ -39,6 +39,6 @@ router.get('/profile', verifyToken, async (req, res) => {
     }
 });
 
-router.post('/upload', verifyToken, uploadPhoto);
+router.post('/upload', verifyToken, upload.single('photo') ,uploadPhoto);
 
 module.exports = router;

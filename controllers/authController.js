@@ -14,45 +14,44 @@ const storage = multer.diskStorage({
     }
 });
 
-const upload = multer({ storage: storage }).single('photo'); //photo adalah key yang dikirimkan dari frontend
+// 1. PERUBAHAN: Hapus .single('photo') dari sini, biarkan hanya inisiasi multer-nya saja
+const upload = multer({ storage: storage }); 
 
+// 2. PERUBAHAN: Fungsi uploadPhoto sekarang jadi jauh lebih bersih
 const uploadPhoto = async (req, res) => {
-    upload(req, res, async (err) => {
-        if (err) {
-            return  res.status(500).json({
-                success: false,
-                message: "Gagal Upload File"
-            });
-        }
+    // Console log ini sangat berguna untuk debugging (seperti saran temanmu)
+    console.log('[UPLOAD] user dari token:', req.user);
+    console.log('[UPLOAD] file:', req.file);
 
-        if (!req.file) {
-            return res.status(400).json({
-                success: false,
-                message: "Mohon pilih file foto"
-            });
-        }
+    // Karena file sudah di-parsing oleh middleware di route, 
+    // kita tinggal ngecek apakah filenya ada atau tidak
+    if (!req.file) {
+        return res.status(400).json({
+            success: false,
+            message: "Mohon pilih file foto"
+        });
+    }
 
-        try {
-            const userId = req.user.id;
-            const fileName = req.file.filename
-            
-            // Update kolom profile+picture di database
-            await db.query('UPDATE users SET profile_picture = ? WHERE id = ?', [fileName, userId]);
+    try {
+        const userId = req.user.id;
+        const fileName = req.file.filename;
+        
+        // Update kolom profile_picture di database
+        await db.query('UPDATE users SET profile_picture = ? WHERE id = ?', [fileName, userId]);
 
-            res.status(200).json({
-                success: true,
-                message: "Foto Profile Berhasil Diperbarui",
-                fileName: fileName
-            });
-            
-        } catch (error) {
-            console.error(error);
-            res.status(500).json({
-                success: false,
-                message: "Terjadi kesalahan pada server backend"
-            });
-        }
-    });
+        res.status(200).json({
+            success: true,
+            message: "Foto Profile Berhasil Diperbarui",
+            fileName: fileName
+        });
+        
+    } catch (error) {
+        console.error('[UPLOAD ERROR]', error);
+        res.status(500).json({
+            success: false,
+            message: "Terjadi kesalahan pada server backend"
+        });
+    }
 };
 
 const register = async (req, res) => {
@@ -170,4 +169,4 @@ const login = async (req, res) => {
     }
 };
 
-module.exports = { register, login, uploadPhoto };
+module.exports = { register, login, uploadPhoto, upload };
